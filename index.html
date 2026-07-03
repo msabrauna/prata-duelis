@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0c29">
+<title>Prāta Duelis ⚡ Galvas rēķini</title>
+<style>
+  :root{
+    --bg1:#0f0c29; --bg2:#302b63; --bg3:#24243e;
+    --accent:#00e5ff; --accent2:#ff2e97; --good:#2bff88; --bad:#ff4d6d;
+    --gold:#ffd54a; --card:rgba(255,255,255,.07); --line:rgba(255,255,255,.14);
+    --txt:#f2f4ff; --muted:#a9b0d6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+    background-size:400% 400%; animation:bgshift 18s ease infinite;
+    color:var(--txt); overflow-x:hidden; min-height:100dvh;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  @keyframes bgshift{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+  .wrap{width:100%; max-width:520px; padding:16px; flex:1; display:flex; flex-direction:column}
+  header{text-align:center; padding:14px 0 6px}
+  h1{margin:0; font-size:1.7rem; letter-spacing:.5px;
+     background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; font-weight:800}
+  .sub{color:var(--muted); font-size:.85rem; margin-top:2px}
+  .screen{display:none; flex:1; flex-direction:column; gap:14px; animation:pop .25s ease}
+  .screen.active{display:flex}
+  @keyframes pop{from{opacity:0; transform:translateY(10px)}to{opacity:1;transform:none}}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px; backdrop-filter:blur(6px)}
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:14px; font-weight:700; color:var(--txt); transition:transform .08s, box-shadow .2s}
+  button:active{transform:scale(.96)}
+  .btn{padding:16px; font-size:1.05rem; width:100%; background:linear-gradient(90deg,var(--accent),#3b82f6); color:#04121a; box-shadow:0 6px 18px rgba(0,229,255,.25)}
+  .btn.pink{background:linear-gradient(90deg,var(--accent2),#ff6a3d); box-shadow:0 6px 18px rgba(255,46,151,.25); color:#1a0410}
+  .btn.ghost{background:var(--card); border:1px solid var(--line); color:var(--txt); box-shadow:none}
+  .btn.sm{padding:11px; font-size:.9rem}
+  .row{display:flex; gap:10px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .lvls{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .lvl{padding:14px; border-radius:14px; background:var(--card); border:1px solid var(--line); text-align:left; position:relative}
+  .lvl.selected{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset}
+  .lvl .t{font-size:1rem; font-weight:800}
+  .lvl .d{font-size:.75rem; color:var(--muted); margin-top:3px}
+  .lvl .emoji{font-size:1.4rem}
+  label.fld{display:block; font-size:.8rem; color:var(--muted); margin:2px 0 6px}
+  input[type=text],input[type=number]{width:100%; padding:14px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--txt); font-size:1.1rem; text-align:center; font-weight:700; letter-spacing:2px}
+  input:focus{outline:none; border-color:var(--accent)}
+  /* GAME */
+  .hud{display:flex; justify-content:space-between; align-items:center; gap:10px}
+  .pill{background:var(--card); border:1px solid var(--line); padding:8px 12px; border-radius:999px; font-weight:800; font-size:.9rem}
+  .timerbar{height:10px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden}
+  .timerbar > i{display:block; height:100%; width:100%; background:linear-gradient(90deg,var(--good),var(--gold),var(--bad)); transition:width .1s linear}
+  .question{font-size:3rem; font-weight:800; text-align:center; padding:18px 0; letter-spacing:1px}
+  .answer{font-size:2.2rem; text-align:center; min-height:2.4rem; letter-spacing:3px; color:var(--accent)}
+  .answer.shake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  .keys{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:6px}
+  .key{padding:18px 0; font-size:1.5rem; font-weight:800; background:var(--card); border:1px solid var(--line)}
+  .key.act{background:linear-gradient(90deg,var(--accent),#3b82f6); color:#04121a}
+  .key.wide{grid-column:span 1}
+  .combo{position:fixed; top:20%; left:50%; transform:translateX(-50%); font-size:2.2rem; font-weight:900; color:var(--gold); text-shadow:0 2px 20px rgba(255,213,74,.6); opacity:0; pointer-events:none}
+  .combo.show{animation:comboPop .7s ease}
+  @keyframes comboPop{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}30%{opacity:1;transform:translate(-50%,-10px) scale(1.2)}100%{opacity:0;transform:translate(-50%,-40px) scale(1)}}
+  /* DUEL bars */
+  .vs{display:flex; gap:10px; align-items:stretch}
+  .pbar{flex:1; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px; text-align:center}
+  .pbar .nm{font-size:.8rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .pbar .sc{font-size:1.8rem; font-weight:900}
+  .pbar.me{border-color:var(--accent)}
+  .pbar.op{border-color:var(--accent2)}
+  .vslabel{align-self:center; font-weight:900; color:var(--muted)}
+  .lb{list-style:none; margin:0; padding:0}
+  .lb li{display:flex; justify-content:space-between; padding:10px 12px; border-radius:12px; margin-bottom:6px; background:var(--card); border:1px solid var(--line)}
+  .lb li .rank{font-weight:900; color:var(--gold); width:28px}
+  .lb li .who{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lb li .pts{font-weight:800; color:var(--accent)}
+  .center{text-align:center}
+  .big{font-size:3.5rem; font-weight:900; margin:6px 0}
+  .muted{color:var(--muted); font-size:.85rem}
+  .status{font-size:.8rem; color:var(--muted); text-align:center; min-height:1.1rem}
+  .tag{display:inline-block; font-size:.7rem; padding:3px 8px; border-radius:999px; background:rgba(0,229,255,.15); border:1px solid var(--line); color:var(--accent)}
+  .flash{position:fixed; inset:0; pointer-events:none; opacity:0}
+  .flash.good{background:radial-gradient(circle,rgba(43,255,136,.25),transparent 60%); animation:fl .35s}
+  .flash.bad{background:radial-gradient(circle,rgba(255,77,109,.3),transparent 60%); animation:fl .35s}
+  @keyframes fl{0%{opacity:1}100%{opacity:0}}
+  footer{text-align:center; font-size:.72rem; color:var(--muted); padding:10px}
+  .link{color:var(--accent); cursor:pointer; text-decoration:underline}
+  .codebox{font-size:2rem; font-weight:900; letter-spacing:6px; text-align:center; color:var(--gold); padding:8px}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div class="combo" id="combo"></div>
+<div class="wrap">
+  <header>
+    <h1>⚡ Prāta Duelis</h1>
+    <div class="sub">Galvas rēķini — jo ātrāk, jo vairāk punktu</div>
+  </header>
+
+  <!-- HOME -->
+  <section class="screen active" id="scr-home">
+    <div class="card center">
+      <label class="fld">Tavs vārds</label>
+      <input type="text" id="playerName" maxlength="12" placeholder="Vārds">
+    </div>
+    <button class="btn" onclick="go('scr-mode-solo')">🎯 Solo treniņš</button>
+    <button class="btn pink" onclick="go('scr-duel')">⚔️ Duelis (2 ierīces)</button>
+    <button class="btn ghost" onclick="showBoard()">🏆 Rezultātu tabula</button>
+  </section>
+
+  <!-- SOLO SETUP -->
+  <section class="screen" id="scr-mode-solo">
+    <div class="card">
+      <div class="tag">Izvēlies līmeni</div>
+      <div class="lvls" id="soloLevels" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="tag">Laika režīms</div>
+      <div class="grid2" id="soloTimes" style="margin-top:10px"></div>
+    </div>
+    <button class="btn" onclick="startSolo()">▶️ Sākt</button>
+    <button class="btn ghost sm" onclick="go('scr-home')">← Atpakaļ</button>
+  </section>
+
+  <!-- DUEL LOBBY -->
+  <section class="screen" id="scr-duel">
+    <div class="card center">
+      <div class="tag">Duelis — spēlē no atsevišķām ierīcēm</div>
+      <p class="muted" style="margin:12px 0 6px">Viens izveido istabu, otrs pievienojas ar kodu.</p>
+    </div>
+    <button class="btn" onclick="hostRoom()">🏠 Izveidot istabu</button>
+    <div class="card">
+      <label class="fld">…vai pievienoties ar kodu</label>
+      <input type="text" id="joinCode" maxlength="6" placeholder="KODS" style="text-transform:uppercase">
+      <button class="btn pink sm" style="margin-top:10px" onclick="joinRoom()">🔗 Pievienoties</button>
+    </div>
+    <div class="status" id="duelStatus"></div>
+    <button class="btn ghost sm" onclick="leaveDuel()">← Atpakaļ</button>
+  </section>
+
+  <!-- DUEL WAIT (host) -->
+  <section class="screen" id="scr-wait">
+    <div class="card center">
+      <div class="muted">Nosūti šo kodu otram spēlētājam:</div>
+      <div class="codebox" id="roomCode">— — —</div>
+      <button class="btn ghost sm" id="copyBtn" onclick="copyCode()">📋 Kopēt kodu</button>
+    </div>
+    <div class="card">
+      <div class="tag">Līmenis</div>
+      <div class="lvls" id="duelLevels" style="margin-top:10px"></div>
+    </div>
+    <div class="status" id="waitStatus">Gaida otru spēlētāju…</div>
+    <button class="btn" id="hostStartBtn" onclick="hostStart()" disabled>▶️ Sākt dueli</button>
+    <button class="btn ghost sm" onclick="leaveDuel()">Atcelt</button>
+  </section>
+
+  <!-- DUEL GUEST WAIT -->
+  <section class="screen" id="scr-guestwait">
+    <div class="card center">
+      <div class="big">✅</div>
+      <div>Pievienojies istabai!</div>
+      <div class="status" id="guestStatus">Gaida, kad hosts sāks dueli…</div>
+    </div>
+    <button class="btn ghost sm" onclick="leaveDuel()">Iziet</button>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen" id="scr-game">
+    <div class="vs" id="duelBars" style="display:none">
+      <div class="pbar me"><div class="nm" id="meName">Tu</div><div class="sc" id="meScore">0</div></div>
+      <div class="vslabel">VS</div>
+      <div class="pbar op"><div class="nm" id="opName">Pretinieks</div><div class="sc" id="opScore">0</div></div>
+    </div>
+    <div class="hud">
+      <div class="pill" id="hudScore">0 p</div>
+      <div class="pill" id="hudCombo">🔥 x1</div>
+      <div class="pill" id="hudTime">⏱ 60</div>
+    </div>
+    <div class="timerbar"><i id="timerFill"></i></div>
+    <div class="card">
+      <div class="question" id="question">…</div>
+      <div class="answer" id="answer">&nbsp;</div>
+    </div>
+    <div class="keys">
+      <button class="key" onclick="tap('1')">1</button>
+      <button class="key" onclick="tap('2')">2</button>
+      <button class="key" onclick="tap('3')">3</button>
+      <button class="key" onclick="tap('4')">4</button>
+      <button class="key" onclick="tap('5')">5</button>
+      <button class="key" onclick="tap('6')">6</button>
+      <button class="key" onclick="tap('7')">7</button>
+      <button class="key" onclick="tap('8')">8</button>
+      <button class="key" onclick="tap('9')">9</button>
+      <button class="key" onclick="tap('-')">±</button>
+      <button class="key" onclick="tap('0')">0</button>
+      <button class="key" onclick="tap('del')">⌫</button>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="scr-result">
+    <div class="card center">
+      <div id="resultTitle" class="big">🎉</div>
+      <div id="resultMsg" style="font-size:1.2rem; font-weight:700"></div>
+      <div class="big" id="resultScore">0</div>
+      <div class="muted" id="resultDetail"></div>
+    </div>
+    <button class="btn" onclick="playAgain()">🔁 Vēlreiz</button>
+    <button class="btn ghost sm" onclick="go('scr-home'); resetDuel()">🏠 Sākums</button>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="screen" id="scr-board">
+    <div class="card">
+      <div class="tag">🏆 Labākie rezultāti (šajā ierīcē)</div>
+      <ul class="lb" id="boardList" style="margin-top:12px"></ul>
+      <button class="btn ghost sm" onclick="clearBoard()">🗑 Notīrīt</button>
+    </div>
+    <button class="btn ghost sm" onclick="go('scr-home')">← Atpakaļ</button>
+  </section>
+
+  <footer>Made with ⚡ · atver abi vienu un to pašu lapu · P2P bez servera</footer>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* ---------- Līmeņi ---------- */
+const LEVELS = [
+  {id:0, t:"1. Sākums",  d:"+ − līdz 20",      emoji:"🐣", ops:["+","-"], max:20,  neg:false},
+  {id:1, t:"2. Skola",   d:"+ − līdz 100",     emoji:"📘", ops:["+","-"], max:100, neg:false},
+  {id:2, t:"3. Reizrēķins", d:"× līdz 10×10",  emoji:"✖️", ops:["*"],     max:10,  neg:false},
+  {id:3, t:"4. Dalīšana", d:"÷ bez atlikuma",  emoji:"➗", ops:["/"],     max:10,  neg:false},
+  {id:4, t:"5. Jauktais", d:"+ − × ÷ grūtāk",  emoji:"🎲", ops:["+","-","*","/"], max:12, neg:false},
+  {id:5, t:"6. Prāta ass", d:"lieli + negatīvi", emoji:"🧠", ops:["+","-","*"], max:20, neg:true},
+];
+const TIMES = [
+  {id:"s30", t:"⚡ Blitz 30s", sec:30},
+  {id:"s60", t:"🎯 Klasika 60s", sec:60},
+  {id:"s120",t:"🏃 Maratons 2min", sec:120},
+  {id:"sd",  t:"💀 Sudden Death", sec:8, sudden:true},
+];
+
+/* ---------- Stāvoklis ---------- */
+let sel = {level:1, time:"s60"};
+let duelSel = {level:1};
+let game = null;
+let peer=null, conn=null, isHost=false, duelActive=false;
+
+/* ---------- Seeded RNG (abām ierīcēm vienādi jautājumi) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function makeQuestion(rng, lvl){
+  const L=LEVELS[lvl];
+  const op=L.ops[Math.floor(rng()*L.ops.length)];
+  let a,b,ans,txt;
+  const R=(n)=>Math.floor(rng()*n);
+  if(op==="+"){a=R(L.max)+1;b=R(L.max)+1;ans=a+b;txt=`${a} + ${b}`;}
+  else if(op==="-"){a=R(L.max)+1;b=R(a)+1; if(L.neg){a=R(L.max)+1;b=R(L.max)+1;} ans=a-b;txt=`${a} − ${b}`;}
+  else if(op==="*"){a=R(L.max)+2;b=R(L.max)+2;ans=a*b;txt=`${a} × ${b}`;}
+  else if(op==="/"){b=R(L.max-1)+2;ans=R(L.max)+2;a=b*ans;txt=`${a} ÷ ${b}`;}
+  return {txt,ans};
+}
+
+/* ---------- Navigācija ---------- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function getName(){let n=document.getElementById('playerName').value.trim();return n||"Spēlētājs";}
+
+/* ---------- Setup ekrāni ---------- */
+function renderLevels(containerId, target, key){
+  const c=document.getElementById(containerId); c.innerHTML="";
+  LEVELS.forEach(L=>{
+    const d=document.createElement('button');
+    d.className="lvl"+(target[key]===L.id?" selected":"");
+    d.innerHTML=`<div class="emoji">${L.emoji}</div><div class="t">${L.t}</div><div class="d">${L.d}</div>`;
+    d.onclick=()=>{target[key]=L.id; renderLevels(containerId,target,key); if(containerId==='duelLevels'&&isHost&&conn)conn.send({type:'lvl',level:L.id});};
+    c.appendChild(d);
+  });
+}
+function renderTimes(){
+  const c=document.getElementById('soloTimes'); c.innerHTML="";
+  TIMES.forEach(T=>{
+    const d=document.createElement('button');
+    d.className="lvl"+(sel.time===T.id?" selected":"");
+    d.style.textAlign="center";
+    d.innerHTML=`<div class="t">${T.t}</div>`;
+    d.onclick=()=>{sel.time=T.id; renderTimes();};
+    c.appendChild(d);
+  });
+}
+renderLevels('soloLevels', sel, 'level');
+renderTimes();
+
+/* ---------- SOLO ---------- */
+function startSolo(){
+  const T=TIMES.find(t=>t.id===sel.time);
+  startGame({mode:'solo', level:sel.level, sec:T.sec, sudden:T.sudden, seed:(Math.random()*1e9)|0});
+}
+
+/* ---------- SPĒLES DZINĒJS ---------- */
+function startGame(cfg){
+  go('scr-game');
+  document.getElementById('duelBars').style.display = cfg.mode==='duel' ? 'flex':'none';
+  const L=LEVELS[cfg.level];
+  game={
+    ...cfg, score:0, combo:0, best:0, correct:0, wrong:0,
+    rng:mulberry32(cfg.seed), input:"", neg:false,
+    timeLeft:cfg.sec, running:true, opScore:0, opDone:false, meDone:false
+  };
+  if(cfg.mode==='duel'){
+    document.getElementById('meName').textContent=getName();
+    document.getElementById('opName').textContent=cfg.opName||"Pretinieks";
+    document.getElementById('meScore').textContent="0";
+    document.getElementById('opScore').textContent="0";
+  }
+  nextQuestion();
+  updateHud();
+  clearInterval(game.timer);
+  game.tickStart=Date.now();
+  game.timer=setInterval(tick, 100);
+}
+
+function nextQuestion(){
+  game.q=makeQuestion(game.rng, game.level);
+  game.input=""; game.neg=false;
+  document.getElementById('question').textContent="= "+game.q.txt;
+  document.getElementById('question').textContent=game.q.txt;
+  renderAnswer();
+  if(game.sudden){game.timeLeft=game.sec; game.tickStart=Date.now();}
+}
+
+function renderAnswer(){
+  const a=document.getElementById('answer');
+  a.textContent=(game.neg?"−":"")+(game.input||"")||" ";
+}
+
+function tap(k){
+  if(!game||!game.running)return;
+  navigator.vibrate&&navigator.vibrate(8);
+  if(k==='del'){game.input=game.input.slice(0,-1); renderAnswer(); return;}
+  if(k==='-'){game.neg=!game.neg; renderAnswer(); return;}
+  if(game.input.length>=6)return;
+  game.input+=k; renderAnswer();
+  // auto-check
+  const val=parseInt((game.neg?"-":"")+game.input,10);
+  if(!isNaN(val)&&val===game.q.ans) submitCorrect();
+}
+
+function submitCorrect(){
+  game.combo++; game.best=Math.max(game.best,game.combo); game.correct++;
+  const pts = 10 + Math.min(game.combo,10)*2;
+  game.score+=pts;
+  flash('good'); showCombo(game.combo);
+  if(game.sudden){game.timeLeft=game.sec; game.tickStart=Date.now();}
+  updateHud(); sendDuel();
+  setTimeout(nextQuestion, 90);
+}
+function wrongAnswer(){
+  game.combo=0; game.wrong++;
+  document.getElementById('answer').classList.add('shake');
+  setTimeout(()=>document.getElementById('answer').classList.remove('shake'),300);
+  flash('bad'); updateHud();
+}
+
+function updateHud(){
+  document.getElementById('hudScore').textContent=game.score+" p";
+  document.getElementById('hudCombo').textContent="🔥 x"+(1+Math.min(game.combo,10));
+  document.getElementById('hudTime').textContent="⏱ "+Math.ceil(game.timeLeft);
+  if(game.mode==='duel'){
+    document.getElementById('meScore').textContent=game.score;
+    document.getElementById('opScore').textContent=game.opScore;
+  }
+}
+
+function tick(){
+  if(!game||!game.running)return;
+  const dt=(Date.now()-game.tickStart)/1000;
+  let left=game.timeLeft-dt;
+  if(game.sudden){
+    document.getElementById('timerFill').style.width=Math.max(0,(left/game.sec)*100)+"%";
+    document.getElementById('hudTime').textContent="⏱ "+Math.max(0,left).toFixed(1);
+    if(left<=0){ wrongAnswer(); endGame(); }
+  } else {
+    document.getElementById('timerFill').style.width=Math.max(0,(left/game.sec)*100)+"%";
+    document.getElementById('hudTime').textContent="⏱ "+Math.max(0,Math.ceil(left));
+    if(left<=0) endGame();
+  }
+}
+
+function endGame(){
+  if(!game.running)return;
+  game.running=false; clearInterval(game.timer);
+  if(game.mode==='duel'){
+    game.meDone=true; sendDuel(true);
+    tryFinishDuel();
+  } else {
+    saveScore(getName(), game.score, game.level);
+    showResult({title:"🎉", msg:"Treniņš pabeigts!", score:game.score,
+      detail:`Pareizi: ${game.correct} · Kļūdas: ${game.wrong} · Labākā sērija: ${game.best}🔥`});
+  }
+}
+
+/* ---------- Efekti ---------- */
+function flash(type){const f=document.getElementById('flash');f.className='flash '+type;void f.offsetWidth;}
+function showCombo(c){
+  if(c<2)return;
+  const el=document.getElementById('combo');
+  const msgs=["","","Labi! x2","Forši! x3","Ripo! x4","Karsti! x5🔥","Neaptur! x6","Zibens! x7⚡","MEISTARS x8","LEĢENDA x9","x10 MAX🚀"];
+  el.textContent=msgs[Math.min(c,10)]||("x"+c+"🔥");
+  el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+}
+
+/* ---------- Rezultāts ---------- */
+function showResult(o){
+  go('scr-result');
+  document.getElementById('resultTitle').textContent=o.title;
+  document.getElementById('resultMsg').textContent=o.msg;
+  document.getElementById('resultScore').textContent=o.score+" punkti";
+  document.getElementById('resultDetail').textContent=o.detail||"";
+}
+function playAgain(){
+  if(game && game.mode==='duel'){
+    if(isHost){hostStart();} else {go('scr-guestwait');document.getElementById('guestStatus').textContent="Gaida, kad hosts sāks nākamo dueli…";}
+  } else startSolo();
+}
+
+/* ---------- Leaderboard (localStorage) ---------- */
+function saveScore(name, score, level){
+  const b=JSON.parse(localStorage.getItem('pd_board')||'[]');
+  b.push({name,score,level,date:Date.now()});
+  b.sort((x,y)=>y.score-x.score);
+  localStorage.setItem('pd_board', JSON.stringify(b.slice(0,20)));
+}
+function showBoard(){
+  const b=JSON.parse(localStorage.getItem('pd_board')||'[]');
+  const ul=document.getElementById('boardList'); ul.innerHTML="";
+  if(!b.length){ul.innerHTML='<li><span class="who">Vēl nav rezultātu — sāc spēlēt!</span></li>';}
+  const medal=["🥇","🥈","🥉"];
+  b.forEach((r,i)=>{
+    const L=LEVELS[r.level]||{emoji:""};
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="rank">${medal[i]||(i+1)}</span><span class="who">${esc(r.name)} <small style="color:var(--muted)">${L.emoji}</small></span><span class="pts">${r.score}</span>`;
+    ul.appendChild(li);
+  });
+  go('scr-board');
+}
+function clearBoard(){if(confirm("Notīrīt rezultātu tabulu?")){localStorage.removeItem('pd_board');showBoard();}}
+function esc(s){return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
+
+/* ================= DUELIS (PeerJS P2P) ================= */
+const CODE_PREFIX="prataduelis-";
+function shortCode(){const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<4;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}
+
+function hostRoom(){
+  isHost=true; const code=shortCode();
+  document.getElementById('duelStatus').textContent="Veido istabu…";
+  peer=new Peer(CODE_PREFIX+code);
+  peer.on('open',()=>{
+    document.getElementById('roomCode').textContent=code;
+    renderLevels('duelLevels', duelSel, 'level');
+    go('scr-wait');
+  });
+  peer.on('connection', c=>{
+    conn=c; wireConn();
+    conn.on('open',()=>{
+      document.getElementById('waitStatus').textContent="✅ Pretinieks pievienojās! Vari sākt.";
+      document.getElementById('hostStartBtn').disabled=false;
+      conn.send({type:'lvl',level:duelSel.level});
+    });
+  });
+  peer.on('error', e=>{ document.getElementById('duelStatus').textContent="Kļūda: "+e.type+" (mēģini vēlreiz)"; go('scr-duel'); });
+}
+
+function joinRoom(){
+  const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(code.length<4){document.getElementById('duelStatus').textContent="Ievadi 4 zīmju kodu.";return;}
+  isHost=false;
+  document.getElementById('duelStatus').textContent="Savienojas…";
+  peer=new Peer();
+  peer.on('open',()=>{
+    conn=peer.connect(CODE_PREFIX+code, {reliable:true});
+    wireConn();
+    conn.on('open',()=>{
+      conn.send({type:'hello', name:getName()});
+      document.getElementById('guestStatus').textContent="Gaida, kad hosts sāks dueli…";
+      go('scr-guestwait');
+    });
+    setTimeout(()=>{ if(!conn||!conn.open){document.getElementById('duelStatus').textContent="Neizdevās savienoties. Pārbaudi kodu.";} },6000);
+  });
+  peer.on('error', e=>{ document.getElementById('duelStatus').textContent="Kļūda: "+e.type; });
+}
+
+let opName="Pretinieks";
+function wireConn(){
+  conn.on('data', d=>{
+    if(d.type==='hello'){ opName=d.name; document.getElementById('opName').textContent=d.name;
+      const ws=document.getElementById('waitStatus'); if(ws)ws.textContent="✅ "+d.name+" pievienojās! Vari sākt."; }
+    else if(d.type==='lvl'){ duelSel.level=d.level; }
+    else if(d.type==='start'){ // guest receives config
+      startGame({mode:'duel', level:d.level, sec:d.sec, sudden:false, seed:d.seed, opName:d.hostName});
+      // send our name back
+      conn.send({type:'hello', name:getName()});
+    }
+    else if(d.type==='progress'){ if(game){game.opScore=d.score; document.getElementById('opScore').textContent=d.score;} }
+    else if(d.type==='done'){ if(game){game.opScore=d.score; game.opDone=true; document.getElementById('opScore').textContent=d.score; tryFinishDuel();} }
+  });
+  conn.on('close', ()=>{ if(duelActive){alert("Pretinieks pameta spēli.");} });
+}
+
+function hostStart(){
+  const seed=(Math.random()*1e9)|0;
+  const sec=60;
+  duelActive=true;
+  conn.send({type:'start', level:duelSel.level, sec, seed, hostName:getName()});
+  startGame({mode:'duel', level:duelSel.level, sec, sudden:false, seed, opName:opName});
+}
+
+function sendDuel(done){
+  if(game.mode!=='duel'||!conn)return;
+  conn.send({type: done?'done':'progress', score:game.score});
+}
+function tryFinishDuel(){
+  if(!game.meDone) return;
+  // wait for opponent done too, but cap wait
+  if(game.opDone){ finishDuel(); }
+  else { document.getElementById('answer').textContent="Gaida pretinieku…"; setTimeout(()=>{ if(!game.opDone)finishDuel(); }, 4000); }
+}
+let duelFinished=false;
+function finishDuel(){
+  if(duelFinished)return; duelFinished=true; duelActive=false;
+  const me=game.score, op=game.opScore;
+  let title, msg;
+  if(me>op){title="🏆";msg="TU UZVARĒJI!";}
+  else if(me<op){title="😤";msg=opName+" uzvarēja";}
+  else {title="🤝";msg="Neizšķirts!";}
+  saveScore(getName(), me, game.level);
+  showResult({title,msg,score:me,detail:`Tu: ${me} · ${opName}: ${op} · Pareizi: ${game.correct} 🔥${game.best}`});
+  setTimeout(()=>{duelFinished=false;},500);
+}
+
+function copyCode(){
+  const t=document.getElementById('roomCode').textContent;
+  navigator.clipboard&&navigator.clipboard.writeText(t);
+  document.getElementById('copyBtn').textContent="✅ Nokopēts!";
+  setTimeout(()=>document.getElementById('copyBtn').textContent="📋 Kopēt kodu",1500);
+}
+function leaveDuel(){ resetDuel(); go('scr-home'); }
+function resetDuel(){
+  try{if(conn)conn.close();}catch(e){}
+  try{if(peer)peer.destroy();}catch(e){}
+  peer=null;conn=null;isHost=false;duelActive=false;duelFinished=false;
+  document.getElementById('duelStatus').textContent="";
+  document.getElementById('hostStartBtn').disabled=true;
+}
+
+/* ---------- Fiziskā tastatūra (dators) ---------- */
+document.addEventListener('keydown', e=>{
+  if(!document.getElementById('scr-game').classList.contains('active'))return;
+  if(e.key>='0'&&e.key<='9')tap(e.key);
+  else if(e.key==='Backspace')tap('del');
+  else if(e.key==='-')tap('-');
+});
+
+/* ielādē saglabāto vārdu */
+document.getElementById('playerName').value=localStorage.getItem('pd_name')||"";
+document.getElementById('playerName').addEventListener('input',e=>localStorage.setItem('pd_name',e.target.value));
+</script>
+</body>
+</html>
